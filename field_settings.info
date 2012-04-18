@@ -1,0 +1,7 @@
+name = Field Settings
+description = Edit field settings for developers.
+package = Development
+core = 7.x
+dependencies[] = devel
+dependencies[] = field_ui
+tags[] = developer

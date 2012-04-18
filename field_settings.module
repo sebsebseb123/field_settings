@@ -1,0 +1,94 @@
+<?php
+
+/**
+ * Implements hook_menu_alter().
+ */
+function field_settings_menu_alter(&$items) {
+  $items['admin/reports/fields']['file'] = 'field_settings.admin.inc';
+  $items['admin/reports/fields']['page callback'] = 'field_settings_fields_list';
+  $items['admin/reports/fields']['module'] = 'field_settings';
+}
+
+/**
+ * Implements hook_menu().
+ */
+function field_settings_menu() {
+  $items = array();
+
+  $items['admin/reports/fields/%'] = array(
+    'title' => 'Field Details',
+    'description' => 'Details for a particular field.',
+    'page callback' => 'field_settings_field_details',
+    'page arguments' => array(3),
+    'access arguments' => array('administer content types'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'field_settings.admin.inc',
+  );
+  $items['admin/reports/fields/%/view'] = array(
+    'title' => 'Field Details',
+    'weight' => -10,
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+  $items['admin/reports/fields/%/edit'] = array(
+    'title' => 'Edit Field',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('field_settings_field_edit_form', 3),
+    'access arguments' => array('administer content types'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  
+  return $items;
+}
+
+function field_settings_field_edit_form($form, &$form_state, $field_name) {
+  $field = field_info_field($field_name);
+
+  // Build the form
+  $form['field_settings'] = field_settings_build_form ($field);
+
+  // Set the tree to true.
+  $form['field_settings']['#tree'] = TRUE;
+
+  // Set the acitons
+  $form['actions'] = array('#type' => 'actions');
+  $form['actions']['submit'] = array('#type' => 'submit', '#value' => t('Save'));
+
+  return $form;
+}
+
+function field_settings_field_edit_form_submit($form, &$form_state) {
+  $field = $form_state['values']['field_settings'];
+  
+  field_update_field($field);
+}
+
+function field_settings_build_form($array) {
+  $form = array();
+
+  foreach ($array as $key => $val) {
+    // If we have an empty array, we don't want to get rid of it.
+    if (is_array($val) && empty($val)) {
+      $form[$key] = array(
+        '#type' => 'value',
+        '#value' => array(),
+      );
+    }
+    else if (is_array($val) && !empty($val)) {
+      $form[$key] = array(
+        '#type' => 'fieldset',
+        '#title' => $key,
+        '#collapsible' => TRUE,
+        '#collapsed' => TRUE,
+      ) + field_settings_build_form($val);
+    }
+    else {
+      $form[$key] = array(
+        '#type' => 'textfield',
+        '#field_prefix' => $key.' = ',
+        '#default_value' => $val,
+      );
+    }
+  }
+
+  return $form;  
+}
