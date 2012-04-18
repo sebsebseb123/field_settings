@@ -54,10 +54,15 @@ function field_settings_fields_list() {
 }
 
 /**
- * Menu callback. Simply uses devel's kpr to print the field info
+ * Menu callback; simply uses devel's kpr to print the field info
  */
 function field_settings_field_details($field_name) {
   $field = field_info_field($field_name);
 
-  return kpr($field, TRUE);
+  // I'd love to use my own field info render function instead of kpr,
+  // but alas, I cannot render fieldsets without FAPI.
+  $output = kpr($field, TRUE);
+  //$output = field_settings_render_field_info($field);
+
+  return $output;
 }

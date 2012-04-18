@@ -4,6 +4,8 @@
  * Implements hook_menu_alter().
  */
 function field_settings_menu_alter(&$items) {
+  // There's no easy way to alter the table on this page... so, we'll override
+  // it and add our own columns.
   $items['admin/reports/fields']['file'] = 'field_settings.admin.inc';
   $items['admin/reports/fields']['page callback'] = 'field_settings_fields_list';
   $items['admin/reports/fields']['module'] = 'field_settings';
@@ -40,11 +42,15 @@ function field_settings_menu() {
   return $items;
 }
 
+/**
+ * Field Edit form
+ */
 function field_settings_field_edit_form($form, &$form_state, $field_name) {
+  // Get field info
   $field = field_info_field($field_name);
 
-  // Build the form
-  $form['field_settings'] = field_settings_build_form ($field);
+  // Build the form based on the field info
+  $form['field_settings'] = field_settings_render_field_info($field, TRUE);
 
   // Set the tree to true.
   $form['field_settings']['#tree'] = TRUE;
@@ -56,13 +62,30 @@ function field_settings_field_edit_form($form, &$form_state, $field_name) {
   return $form;
 }
 
+/**
+ * Submit handler
+ */
 function field_settings_field_edit_form_submit($form, &$form_state) {
+  // Get the field settings from the form_state
   $field = $form_state['values']['field_settings'];
   
+  // Update the field and hope that nothing goes wrong
   field_update_field($field);
 }
 
-function field_settings_build_form($array) {
+/**
+ * Helper function to build the form from the field_info array
+ *
+ * @param $array
+ *   Array - An array... which will be broken down into textfields, unless
+ *   we encounter an array... in which case, we recurse.
+ *
+ * @param $form_items
+ *   Bool - Should we return textfield form items?
+ *
+ * @return We return a FAPI formatted array consisting of textfields and fieldsets
+ */
+function field_settings_render_field_info($array, $form_items = FALSE) {
   $form = array();
 
   foreach ($array as $key => $val) {
@@ -73,19 +96,28 @@ function field_settings_build_form($array) {
         '#value' => array(),
       );
     }
+    // If we have an empty array, we don't want to get rid of it.
     else if (is_array($val) && !empty($val)) {
       $form[$key] = array(
         '#type' => 'fieldset',
-        '#title' => $key,
+        '#title' => $key.' = array()',
         '#collapsible' => TRUE,
         '#collapsed' => TRUE,
-      ) + field_settings_build_form($val);
+      ) + field_settings_render_field_info($val, $form_items);
     }
-    else {
+    // Or, render the value.
+    else if ($form_items) {
       $form[$key] = array(
         '#type' => 'textfield',
         '#field_prefix' => $key.' = ',
         '#default_value' => $val,
+      );
+    }
+    // Or, just render a textfield.
+    else {
+      $form[$key] = array(
+        '#type' => 'item',
+        '#title' => $key.' = '.$val,
       );
     }
   }
